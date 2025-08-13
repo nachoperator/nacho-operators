@@ -1,0 +1,20 @@
+apiVersion: apps.nachoperator.io/v1alpha1
+kind: UpgradeOrchestrator
+metadata:
+  labels:
+    app.kubernetes.io/name: upgrade-orchestrator
+    app.kubernetes.io/managed-by: kustomize
+  name: deploy-dependency-map
+  namespace: cadence-master
+spec:
+  deployments:
+    - name: opensearch-data
+    - name: opensearch-master
+      dependsOn:
+        - opensearch-data
+    - name: opensearch-replica-master
+      dependsOn:
+        - opensearch-master
+    - name: opensearch-replica-data
+      dependsOn:
+        - opensearch-replica-master

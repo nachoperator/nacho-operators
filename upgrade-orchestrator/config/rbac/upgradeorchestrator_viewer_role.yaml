@@ -1,0 +1,23 @@
+# permissions for end users to view upgradeorchestrators.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: upgrade-orchestrator
+    app.kubernetes.io/managed-by: kustomize
+  name: upgradeorchestrator-viewer-role
+rules:
+- apiGroups:
+  - apps.nachoperator.io
+  resources:
+  - upgradeorchestrators
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps.nachoperator.io
+  resources:
+  - upgradeorchestrators/status
+  verbs:
+  - get

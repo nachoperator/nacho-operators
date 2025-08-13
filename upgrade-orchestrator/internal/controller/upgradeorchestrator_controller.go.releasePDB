@@ -1,0 +1,433 @@
+package controllers
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"golang.org/x/mod/semver"
+	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/util/retry"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	nachov1alpha1 "github.com/nachoperator/nacho-operators/upgrade-orchestrator/api/v1alpha1"
+)
+
+// UpgradeOrchestratorReconciler reconciles a UpgradeOrchestrator object
+type UpgradeOrchestratorReconciler struct {
+	client.Client
+	Scheme *runtime.Scheme
+}
+
+const (
+	PhaseInitializing = "Initializing"
+	PhaseIdle         = "Idle"
+	PhaseUpgrading    = "Upgrading"
+	PhaseCompleted    = "Completed"
+)
+
+//+kubebuilder:rbac:groups=nachoperator.io,resources=upgradeorchestrators,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=nachoperator.io,resources=upgradeorchestrators/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch
+//+kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+
+func (r *UpgradeOrchestratorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	var uo nachov1alpha1.UpgradeOrchestrator
+	if err := r.Get(ctx, req.NamespacedName, &uo); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// --- State Machine ---
+	if uo.Status.Phase == "" {
+		logger.Info("Object has no phase, setting to Initializing.")
+		uo.Status.Phase = PhaseInitializing
+		uo.Status.CurrentLayer = 0
+		err := r.Status().Update(ctx, &uo)
+		return ctrl.Result{Requeue: true}, err
+	}
+
+	layers, err := r.buildDependencyLayers(uo.Spec.Deployments)
+	if err != nil {
+		logger.Error(err, "Invalid dependency graph.")
+		return ctrl.Result{}, nil
+	}
+
+	switch uo.Status.Phase {
+	case PhaseInitializing:
+		return r.reconcileInitializing(ctx, &uo, layers)
+	case PhaseIdle:
+		return r.reconcileIdle(ctx, &uo, layers)
+	case PhaseUpgrading:
+		return r.reconcileUpgrading(ctx, &uo, layers)
+	case PhaseCompleted:
+		return r.reconcileCompleted(ctx, &uo)
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) reconcileInitializing(ctx context.Context, uo *nachov1alpha1.UpgradeOrchestrator, layers [][]string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	logger.Info("Phase: Initializing. Ensuring all PDBs are created and locked.")
+
+	allPDBsReady, err := r.checkAllPDBsState(ctx, uo, layers, 0)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !allPDBsReady {
+		logger.Info("Not all PDBs are ready. Re-checking.")
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+	}
+
+	logger.Info("All PDBs are created and locked. Moving to Idle phase.")
+	uo.Status.Phase = PhaseIdle
+	return ctrl.Result{Requeue: true}, r.Status().Update(ctx, uo)
+}
+
+func (r *UpgradeOrchestratorReconciler) reconcileIdle(ctx context.Context, uo *nachov1alpha1.UpgradeOrchestrator, layers [][]string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	logger.Info("Phase: Idle. Watching for upgrade.")
+
+	allPDBsReady, err := r.checkAllPDBsState(ctx, uo, layers, 0)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if !allPDBsReady {
+		logger.Info("Inconsistent state detected in Idle phase (PDBs are missing or unlocked). Re-initializing.")
+		uo.Status.Phase = PhaseInitializing
+		return ctrl.Result{Requeue: true}, r.Status().Update(ctx, uo)
+	}
+
+	_, isUpgradeInProgress, err := r.findTargetNodeVersion(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if isUpgradeInProgress {
+		logger.Info("Upgrade detected. Moving to Upgrading phase.")
+		uo.Status.Phase = PhaseUpgrading
+		uo.Status.CurrentLayer = 0
+		return ctrl.Result{Requeue: true}, r.Status().Update(ctx, uo)
+	}
+
+	return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) reconcileUpgrading(ctx context.Context, uo *nachov1alpha1.UpgradeOrchestrator, layers [][]string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	targetVersion, isUpgradeInProgress, err := r.findTargetNodeVersion(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !isUpgradeInProgress {
+		logger.Info("Upgrade finished or rolled back. Moving back to Idle phase.")
+		uo.Status.Phase = PhaseIdle
+		uo.Status.CurrentLayer = 0
+		return ctrl.Result{Requeue: true}, r.Status().Update(ctx, uo)
+	}
+
+	if targetVersion == "" {
+		logger.Info("Upgrade starting, but target version is not yet visible. Waiting.")
+		return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
+	}
+
+	logger.Info("Upgrade in progress detected.", "target_version", targetVersion)
+	currentLayerIndex := uo.Status.CurrentLayer
+	if currentLayerIndex >= len(layers) {
+		logger.Info("All layers successfully upgraded. Moving to Completed phase.")
+		uo.Status.Phase = PhaseCompleted
+		return ctrl.Result{Requeue: true}, r.Status().Update(ctx, uo)
+	}
+
+	currentLayerApps := layers[currentLayerIndex]
+	logger.Info("Processing upgrade", "layer", currentLayerIndex, "apps", currentLayerApps)
+
+	for _, appName := range currentLayerApps {
+		if err := r.ensurePDBState(ctx, uo, appName, 1); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	allMigrated := true
+	for _, appName := range currentLayerApps {
+		migrated, err := r.isAppOnTargetVersion(ctx, uo.Namespace, appName, targetVersion)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if !migrated {
+			allMigrated = false
+			break
+		}
+	}
+
+	if allMigrated {
+		logger.Info("✅ Layer successfully migrated", "layer", currentLayerIndex)
+		for _, appName := range currentLayerApps {
+			if err := r.ensurePDBState(ctx, uo, appName, 0); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		uo.Status.CurrentLayer++
+		if err := r.Status().Update(ctx, uo); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	logger.Info("⏳ Waiting for layer to complete migration...", "layer", currentLayerIndex)
+	return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) reconcileCompleted(ctx context.Context, uo *nachov1alpha1.UpgradeOrchestrator) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	logger.Info("Phase: Completed. Waiting for upgrade to finish.")
+
+	_, isUpgradeInProgress, err := r.findTargetNodeVersion(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if !isUpgradeInProgress {
+		logger.Info("Upgrade fully finished. Moving back to Idle phase.")
+		uo.Status.Phase = PhaseIdle
+		uo.Status.CurrentLayer = 0
+		return ctrl.Result{Requeue: true}, r.Status().Update(ctx, uo)
+	}
+
+	return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) checkAllPDBsState(ctx context.Context, uo *nachov1alpha1.UpgradeOrchestrator, layers [][]string, maxUnavailable int) (bool, error) {
+	for _, layer := range layers {
+		for _, appName := range layer {
+			ready, err := r.isPDBinState(ctx, uo, appName, maxUnavailable)
+			if err != nil {
+				return false, err
+			}
+			if !ready {
+				return false, nil
+			}
+		}
+	}
+	return true, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) isPDBinState(ctx context.Context, uo *nachov1alpha1.UpgradeOrchestrator, appName string, maxUnavailable int) (bool, error) {
+	pdbName := fmt.Sprintf("%s-pdb", appName)
+	pdb := &policyv1.PodDisruptionBudget{}
+	err := r.Get(ctx, types.NamespacedName{Name: pdbName, Namespace: uo.Namespace}, pdb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, r.ensurePDBState(ctx, uo, appName, maxUnavailable)
+		}
+		return false, err
+	}
+	return pdb.Spec.MaxUnavailable != nil && pdb.Spec.MaxUnavailable.IntValue() == maxUnavailable, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) ensurePDBState(ctx context.Context, uo *nachov1alpha1.UpgradeOrchestrator, appName string, maxUnavailable int) error {
+	pdbName := fmt.Sprintf("%s-pdb", appName)
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		pdb := &policyv1.PodDisruptionBudget{}
+		err := r.Get(ctx, types.NamespacedName{Name: pdbName, Namespace: uo.Namespace}, pdb)
+
+		if err != nil && errors.IsNotFound(err) {
+			newPDB := r.newPDB(uo, appName, maxUnavailable)
+			if err := controllerutil.SetControllerReference(uo, newPDB, r.Scheme); err != nil {
+				return err
+			}
+			return r.Create(ctx, newPDB)
+		} else if err != nil {
+			return err
+		}
+
+		if pdb.Spec.MaxUnavailable != nil && pdb.Spec.MaxUnavailable.IntValue() == maxUnavailable {
+			return nil
+		}
+
+		maxUnavailableIntStr := intstr.FromInt(maxUnavailable)
+		pdb.Spec.MaxUnavailable = &maxUnavailableIntStr
+		return r.Update(ctx, pdb)
+	})
+}
+
+func (r *UpgradeOrchestratorReconciler) isAppOnTargetVersion(ctx context.Context, namespace, appName, targetVersion string) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	podList := &corev1.PodList{}
+	if err := r.List(ctx, podList, &client.ListOptions{
+		Namespace:     namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{"app": appName}),
+	}); err != nil {
+		return false, err
+	}
+
+	if len(podList.Items) == 0 {
+		return true, nil
+	}
+
+	for _, pod := range podList.Items {
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			continue
+		}
+		if pod.Status.Phase != corev1.PodRunning {
+			return false, nil
+		}
+
+		node := &corev1.Node{}
+		if err := r.Get(ctx, client.ObjectKey{Name: pod.Spec.NodeName}, node); err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			return false, err
+		}
+		nodeVersion := "v" + strings.TrimPrefix(node.Status.NodeInfo.KubeletVersion, "v")
+
+		if semver.Compare(nodeVersion, targetVersion) != 0 {
+			logger.Info("Found pod on old node version, migration not complete", "app", appName, "pod", pod.Name, "node_version", nodeVersion)
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) findTargetNodeVersion(ctx context.Context) (string, bool, error) {
+	nodeList := &corev1.NodeList{}
+	if err := r.List(ctx, nodeList); err != nil {
+		return "", false, err
+	}
+	if len(nodeList.Items) == 0 {
+		return "", false, errors.NewBadRequest("no nodes found in the cluster")
+	}
+
+	uniqueVersions := make(map[string]struct{})
+	var versions []string
+	var hasUnschedulableNode = false
+
+	for _, node := range nodeList.Items {
+		if node.Spec.Unschedulable {
+			hasUnschedulableNode = true
+		}
+
+		v := "v" + strings.TrimPrefix(node.Status.NodeInfo.KubeletVersion, "v")
+		if _, exists := uniqueVersions[v]; !exists && semver.IsValid(v) {
+			uniqueVersions[v] = struct{}{}
+			versions = append(versions, v)
+		}
+	}
+
+	if len(versions) == 0 {
+		return "", false, errors.NewBadRequest("no valid semver node versions found")
+	}
+
+	if len(versions) <= 1 && !hasUnschedulableNode {
+		return "", false, nil
+	}
+
+	if len(versions) > 1 {
+		semver.Sort(versions)
+		targetVersion := versions[len(versions)-1]
+		return targetVersion, true, nil
+	}
+
+	if len(versions) == 1 && hasUnschedulableNode {
+		return "", true, nil
+	}
+
+	return "", false, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) buildDependencyLayers(deployments []nachov1alpha1.DeploymentPlan) ([][]string, error) {
+	graph := make(map[string][]string)
+	inDegree := make(map[string]int)
+
+	for _, d := range deployments {
+		inDegree[d.Name] = 0
+		graph[d.Name] = []string{}
+	}
+
+	for _, d := range deployments {
+		for _, dep := range d.DependsOn {
+			graph[dep] = append(graph[dep], d.Name)
+			inDegree[d.Name]++
+		}
+	}
+
+	var queue []string
+	for name, degree := range inDegree {
+		if degree == 0 {
+			queue = append(queue, name)
+		}
+	}
+
+	var layers [][]string
+	for len(queue) > 0 {
+		sort.Strings(queue)
+		layers = append(layers, queue)
+		var nextQueue []string
+		for _, name := range queue {
+			for _, neighbor := range graph[name] {
+				inDegree[neighbor]--
+				if inDegree[neighbor] == 0 {
+					nextQueue = append(nextQueue, neighbor)
+				}
+			}
+		}
+		queue = nextQueue
+	}
+
+	if len(layers) > 0 {
+		count := 0
+		for _, layer := range layers {
+			count += len(layer)
+		}
+		if count != len(deployments) {
+			return nil, fmt.Errorf("cycle detected in dependencies")
+		}
+	}
+
+	return layers, nil
+}
+
+func (r *UpgradeOrchestratorReconciler) newPDB(uo *nachov1alpha1.UpgradeOrchestrator, appName string, maxUnavailable int) *policyv1.PodDisruptionBudget {
+	maxUnavailableIntStr := intstr.FromInt(maxUnavailable)
+	return &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-pdb", appName),
+			Namespace: uo.Namespace,
+		},
+		Spec: policyv1.PodDisruptionBudgetSpec{
+			MaxUnavailable: &maxUnavailableIntStr,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": appName},
+			},
+		},
+	}
+}
+
+func (r *UpgradeOrchestratorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&nachov1alpha1.UpgradeOrchestrator{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
+		Complete(r)
+}
