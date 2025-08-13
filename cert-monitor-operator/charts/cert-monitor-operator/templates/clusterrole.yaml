@@ -1,0 +1,46 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # The name includes the Helm release name for uniqueness
+  name: {{ include "cert-monitor-operator.fullname" . }}-certificatemonitor-access
+# Rules defining permissions granted by this ClusterRole
+rules:
+# Permissions for the custom resource CertificateMonitor
+- apiGroups:
+  - certmonitor.masorange.com # The API group of our CRD
+  resources:
+  - certificatemonitors        # The plural resource name
+  verbs:
+  - get   # Allow reading individual CRs
+  - list  # Allow listing all CRs
+  - watch # Allow watching for changes to CRs
+# ---
+# Permissions to update the /status subresource of CertificateMonitor
+- apiGroups:
+  - certmonitor.masorange.com # The API group of our CRD
+  resources:
+  - certificatemonitors/status # Specifically target the /status subresource
+  verbs:
+  - get   # Allow reading the status
+  - patch # Allow partial updates to the status
+  - update # Allow replacing the entire status
+# ---
+# Permissions for Secrets across the cluster
+- apiGroups:
+  - "" # Core API group
+  resources:
+  - secrets
+  verbs:
+  - get   # Allow reading individual Secrets
+  - list  # Allow listing Secrets (needed to find relevant ones)
+  - watch # Allow watching for Secret changes (optional, depends on controller logic)
+# ---
+# Permissions for Namespaces (needed for namespaceSelector)
+- apiGroups:
+  - "" # Core API group
+  resources:
+  - namespaces
+  verbs:
+  - get   # Allow reading individual Namespaces (to check labels)
+  - list  # Allow listing Namespaces (if needed, often get is sufficient)
+  - watch # Allow watching Namespace changes (optional)

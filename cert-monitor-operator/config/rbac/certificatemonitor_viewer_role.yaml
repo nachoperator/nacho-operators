@@ -1,0 +1,23 @@
+# permissions for end users to view certificatemonitors.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: cert-monitor-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: certificatemonitor-viewer-role
+rules:
+- apiGroups:
+  - certmonitor.masorange.com
+  resources:
+  - certificatemonitors
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - certmonitor.masorange.com
+  resources:
+  - certificatemonitors/status
+  verbs:
+  - get

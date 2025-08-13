@@ -1,0 +1,39 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - certmonitor.masorange.com
+  resources:
+  - certificatemonitors
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - certmonitor.masorange.com
+  resources:
+  - certificatemonitors/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - certmonitor.masorange.com
+  resources:
+  - certificatemonitors/status
+  verbs:
+  - get
+  - patch
+  - update

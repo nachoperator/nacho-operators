@@ -1,0 +1,58 @@
+replicaCount: 1
+
+image:
+  repository: eu.gcr.io/mm-k8s-dev-01/operator/cert-monitor-operator
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podLabels: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  port: 9443
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+livenessProbe: {}
+readinessProbe: {}
+
+volumes: []
+volumeMounts: []
+
+cr:
+  renewalThresholdDays: 30
+  notifications:
+    slack:
+      enabled: true
+      notificationEndpoint: # configured in every env
+    opsgenie:
+      enabled: false
+      region: "EU"
+      priority: "P2"                  
+    scopedNamespaceSelector:
+      enabled: true  
+      matchLabels:
+        certmonitor.masorange.com/notify: "true" 

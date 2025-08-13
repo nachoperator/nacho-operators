@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "e2e_suite_test.go",
+        "e2e_test.go",
+    ],
+    tags = ["manual"],  #TODO: remove this tag when the test is ready to run automatically
+    deps = [
+        "//pkg/runtime/operators/cert-monitor-operator/test/utils:go_default_library",
+        "//vendor/github.com/onsi/ginkgo/v2:go_default_library",
+        "//vendor/github.com/onsi/gomega:go_default_library",
+    ],
+)

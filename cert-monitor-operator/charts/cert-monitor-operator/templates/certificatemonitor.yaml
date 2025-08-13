@@ -1,0 +1,48 @@
+apiVersion: certmonitor.masorange.com/v1alpha1
+kind: CertificateMonitor
+metadata:
+  name: cluster-wide-cert-check
+  namespace: {{ .Release.Namespace }}
+spec:
+  # (Optional) Namespace filtering 
+  namespaceSelector: {}
+    # matchLabels:
+    #   environment: dev 
+  # Secret filtering 
+  secretSelector: {}
+    # matchLabels:
+    #   certs: Optional to filter secrets
+  # --- Configuration of notification and alerting ---
+  renewalThresholdDays: {{ .Values.cr.renewalThresholdDays }} 
+  {{- if .Values.cr.notifications.slack.enabled }}
+  notificationEndpoint: {{ .Values.cr.notifications.slack.notificationEndpoint | quote }}
+  {{- end }}
+
+  opsgenie:  
+    enabled: {{.Values.cr.notifications.opsgenie.enabled }}
+    apiKeySecretRef:
+      name: "opsgenie-cert-monitor-apikey"
+      namespace: {{ .Release.Namespace }}
+      key: "apiKey"
+      {{- if .Values.cr.notifications.opsgenie.region }}
+      region: {{ .Values.cr.notifications.opsgenie.region | quote }}
+      {{- end }}
+      {{- if .Values.cr.notifications.opsgenie.priority }}
+      priority: {{ .Values.cr.notifications.opsgenie.priority | quote }}
+      {{- else }}
+      priority: "P3"
+      {{- end }}
+
+  # # (Optional) Email list to send notifications
+  # emailRecipients:
+  #   - "<EMAIL_1>"  
+  #   - "<EMAIL_2>"  
+  {{- if and .Values.cr.notifications.scopedNamespaceSelector .Values.cr.notifications.scopedNamespaceSelector.enabled }}
+  notificationNamespaceSelector:
+    {{- if .Values.cr.notifications.scopedNamespaceSelector.matchLabels }}
+    matchLabels:
+      {{- toYaml .Values.cr.notifications.scopedNamespaceSelector.matchLabels | nindent 6 }}
+    {{- end }}
+  {{- else }}
+  notificationNamespaceSelector: {} 
+  {{- end }}

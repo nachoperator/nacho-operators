@@ -1,0 +1,97 @@
+load("@com_github_atlassian_bazel_tools//:multirun/def.bzl", "multirun")
+load("@com_github_masmovil_bazel_rules//helm:helm.bzl", "helm_release")
+load(
+    "@io_bazel_rules_docker//container:container.bzl",
+    "container_image",
+    "container_pull",
+    "container_push",
+)
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@masmovil_bazel_rules//helm:def.bzl", "helm_chart", "helm_push")
+load(":version.bzl", "get_name", "get_version")
+
+go_binary(
+    name = "service",
+    out = "certificate-monitor-operator",
+    embed = ["//pkg/runtime/operators/cert-monitor-operator/cmd:go_default_library"], 
+    goarch = "amd64",
+    goos = "linux",
+    visibility = ["//visibility:public"],
+)
+container_image(
+    name = "docker_image",
+    base = "//pkg/base/containers/go:container",
+    env = {
+        "CONFIG_PATH": "/etc/config/",
+        "GIN_MODE": "release",
+        "BUILD_VERSION": get_version(),
+    },
+    tags = [
+        "linux",
+        "manual",
+    ],
+)
+
+go_image(
+    name = "container",
+    args = ["start"],
+    base = ":docker_image",
+    binary = ":service",
+    tags = ["manual"],
+)
+
+helm_chart(
+    name = "chart",
+    srcs = glob(["charts/" + get_name() + "/**"]),
+    chart_name = get_name(),
+    image = ":container",
+    image_repository = "europe-docker.pkg.dev/mm-cloud-runtime-prod/container-images/" + get_name(),
+    tags = ["manual"],
+    values_repo_yaml_path = "base.k8s.deployment.image.repository",
+    values_tag_yaml_path = "base.k8s.deployment.image.tag",
+    version = get_version(),
+)
+
+helm_push(
+    name = "chart_push",
+    chart = ":chart",
+    repo_type = "gcp_artifact_registry",
+    repository_name = "mm-cloud-runtime-prod/helm-charts",
+    repository_url = "europe-docker.pkg.dev",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+helm_release(
+    name = "chart_install",
+    chart = ":chart",
+    namespace = "cert-monitor-${DEPLOY_BRANCH}",
+    release_name = get_name() + "-${DEPLOY_BRANCH}",
+    tags = ["manual"],
+    tiller_namespace = "tiller-system",
+    values_yaml = glob(["charts/" + get_name() + "/values.yaml"]),
+    visibility = ["//visibility:public"],
+)
+
+container_push(
+    name = "container_push",
+    format = "Docker",
+    image = ":container",
+    registry = "europe-docker.pkg.dev",
+    repository = "mm-cloud-runtime-prod/container-images/" + get_name(),
+    tag = get_version(),
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
+
+multirun(
+    name = "push",
+    commands = [
+        ":chart_push",
+        ":container_push",
+    ],
+    parallel = True,
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

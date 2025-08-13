@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- certmonitor_v1alpha1_certificatemonitor.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

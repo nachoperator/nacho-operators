@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/cmd",
+    visibility = ["//pkg/runtime/operators/cert-monitor-operator:__pkg__"],
+    deps = [
+        "//pkg/runtime/operators/cert-monitor-operator/api/v1alpha1:go_default_library",
+        "//pkg/runtime/operators/cert-monitor-operator/internal/controller:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/util/runtime:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes/scheme:go_default_library",
+        "//vendor/k8s.io/client-go/plugin/pkg/client/auth:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/healthz:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/log/zap:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/metrics/filters:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/metrics/server:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/webhook:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "cmd",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
