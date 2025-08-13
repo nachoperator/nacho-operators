@@ -1,0 +1,9 @@
+apiVersion: certmonitor.masorange.com/v1alpha1
+kind: CertificateMonitor
+metadata:
+  labels:
+    app.kubernetes.io/name: cert-monitor-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: certificatemonitor-sample
+spec:
+  # TODO(user): Add fields here

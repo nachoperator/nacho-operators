@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "lib",
+    srcs = glob(["*.go"]),
+    importpath = "github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/pkg/notifications",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/runtime/operators/cert-monitor-operator/api/v1alpha1:go_default_library",
+        "//vendor/github.com/go-logr/logr:go_default_library",
+    ],
+)
