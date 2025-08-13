@@ -1,0 +1,66 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # The name includes the Helm release name for uniqueness
+  name: {{ include "kafka-access-monitor-operator.fullname" . }}-kafkaaccessmonitor-access
+# Rules defining permissions granted by this ClusterRole
+rules:
+# Permissions for the custom resource KafkaAccessQuery
+- apiGroups:
+  - accessmonitor.masorange.com # The API group of our CRD
+  resources:
+  - kafkaaccessqueries        # The plural resource name
+  verbs:
+  - get   # Allow reading individual CRs
+  - list  # Allow listing all CRs
+  - watch # Allow watching for changes to CRs
+  - create   
+  - update   
+  - patch    
+  - delete   
+# ---
+# Permissions to update the /status subresource of KafkaAccessQuery
+- apiGroups:
+  - accessmonitor.masorange.com # The API group of our CRD
+  resources:
+  - kafkaaccessqueries/status # Specifically target the /status subresource
+  verbs:
+  - get   # Allow reading the status
+  - patch # Allow partial updates to the status
+  - update # Allow replacing the entire status
+# ---
+# Permissions for Secrets across the cluster
+- apiGroups:
+  - "" # Core API group
+  resources:
+  - secrets
+  verbs:
+  - get   # Allow reading individual Secrets
+  - list  # Allow listing Secrets (needed to find relevant ones)
+  - watch # Allow watching for Secret changes (optional, depends on controller logic)
+# ---
+# Permissions for Namespaces (needed for namespaceSelector)
+- apiGroups:
+  - "" # Core API group
+  resources:
+  - namespaces
+  verbs:
+  - get   # Allow reading individual Namespaces (to check labels)
+  - list  # Allow listing Namespaces (if needed, often get is sufficient)
+  - watch # Allow watching Namespace changes (optional)
+# Grupo API Core para Pods, Namespaces, ConfigMaps, Events y Logs
+- apiGroups: [""] 
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get"]

@@ -1,0 +1,198 @@
+replicaCount: 1
+image:
+  repository: eu.gcr.io/mm-k8s-dev-01/operator/kafka-access-monitor-operator
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: 
+      iam.gke.io/gcp-service-account: cloud-runtime-gke@mm-cloud-runtime-sta.iam.gserviceaccount.com
+  name: ""
+
+podAnnotations: 
+  iam.gke.io/gcp-service-account: cloud-runtime-gke@mm-cloud-runtime-sta.iam.gserviceaccount.com
+
+podLabels: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  port: 9443
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+livenessProbe: {}
+readinessProbe: {}
+
+volumes:
+  - name: ai-api-key-volume
+    secret:
+      secretName: ai-kafka-access-monitor-apikey
+  - name: parser-config-volume
+    configMap:
+      name: kafka-access-parser-rules
+  - name: slack-webhook-volume
+    secret:
+      secretName: slack-kafka-access-monitor-apikey
+                  
+
+volumeMounts:
+  - name: ai-api-key-volume 
+    mountPath: "/etc/ai"
+    readOnly: true
+  - name: parser-config-volume
+    mountPath: "/etc/parser-config"
+    readOnly: true
+  - name: slack-webhook-volume
+    mountPath: "/etc/slack"
+    readOnly: true
+
+log:
+  level: "info" #  "info", "warn", "error" or "debug"
+
+extraEnv:
+  - name: EXECUTION_ENVIRONMENT
+    value: "sta"
+  - name: GCP_PROJECT_ID
+    value: "mm-k8s-dev-01"
+
+# -----------------------------------------------------------------
+# Values for the KafkaAccessQuery Custom Resource (CR)
+# -----------------------------------------------------------------
+ai:
+  analysisEnabled: true
+cr:
+  # Enables or disables the creation of this resource. Must be 'true' for it to be generated.
+  enabled: true
+
+  # Name of the KafkaAccessQuery resource to be created in Kubernetes.
+  # If not defined, it will default to a name based on the Helm release.
+  name: "kafka-access-query-dev"
+
+  # --- INSPECTION SCOPE ---
+  # Defines where the operator will look for pods to analyze.
+  inspectionScope:
+    # Selects which namespaces to search in.
+    # An empty object {} means "search in all namespaces".
+    # You can restrict it to namespaces with a specific label.
+    namespaceSelector: {}
+      # matchLabels:
+      #   # Example: Only searches in namespaces with the label 'env=production'
+      #   env: dev
+
+    # Selects which pods to analyze within the chosen namespaces.
+    # An empty object {} means "analyze all pods" (not recommended).
+    # It is crucial to define this to target your consumers.
+    podSelector: {}
+      # matchLabels:
+      #   # This is the label that must match your consumer pods.
+      #   # Change this to the actual label used by your applications.
+      #   app: my-kafka-consumer
+      #   component: backend-data
+
+  # --- DETECTION CRITERIA ---
+  # Defines how to find the Kafka broker addresses within a pod.
+  detectionCriteria:
+    # List of ENVIRONMENT VARIABLE names that may contain the Kafka brokers.
+    # The operator will look for these variables in the selected pods.
+    environmentVariableNames:
+      - KAFKA_BROKERS
+      - KAFKA_BOOTSTRAP_SERVERS
+      - BOOTSTRAP_SERVERS
+
+    # List of keys within ConfigMaps that may contain the brokers.
+    # Useful if the pods mount their configuration from a ConfigMap.
+    configMapKeys:
+      "kafka.properties": true
+      "bootstrap.servers": true
+
+    # Pattern (regular expression) to validate that a found value is actually a broker address.
+    # This example looks for one or more hosts followed by a port, separated by commas.
+    kafkaBrokerPattern: '([a-zA-Z0-9.-]+:\d+)(,[a-zA-Z0-9.-]+:\d+)*'
+
+  # --- CONTROLLER CONFIGURATION ---
+  # Settings for how the operator's reconciliation loop behaves for this resource.
+  controllerConfig:
+    # How often the operator will re-evaluate this resource and re-scan the cluster.
+    # Duration format: "s", "m", "h". The default in the template is "1h".
+    requeueInterval: "30m"
+
+  # --- NOTIFICATIONS (Example) ---
+  # Although the template indicates this is a simulation, this is how it would be configured.
+  notifications:
+    slack:
+      enabled: false
+      # notificationEndpoint: "https://hooks.slack.com/services/..."
+# -----------------------------------------------------------------
+# dynamic kafka access query configuration
+# -----------------------------------------------------------------
+errorLogScanInterval: "15m"
+#sourceConfigMapName: "consumer-identification-process-config"
+parserConfig:
+  parsingRules:
+    # --- Client identifier ---
+    groupId:
+      - "consumerGroupId"
+      - "consumerGroup"
+      - "groupId"
+      - "group.group_id"
+      - "consumer.groupId"
+      - "kafka.consumer.default.groupId"
+    clientId:
+      - "producerClientId"
+      - "producerId"
+      - "producer.client-id"
+      - "producer.producerId"
+    consumerGroupSuffix:
+      - "consumerGroupSuffix"
+      - "kafka.consumerGroupSuffix"
+    # --- Connection ---
+    bootstrapServers:
+      - "bootstrap_server_config"
+    host:
+      - "host"
+    port:
+      - "port"
+    schemaRegistryUrl:
+      - "schemaRegistryUrl"
+      - "registryUrl"
+      - "schema_url"
+
+    # --- Consumer configuration ---
+    autoOffsetReset:
+      - "autoOffsetReset"
+      - "auto_offset_reset"
+      - "reset_offset"
+      - "consumer.autoOffsetReset"
+    autoCommit:
+      - "autoCommit"
+      - "auto_commit"
+      - "consumer.autoCommit"
+    maxPollRecords:
+      - "max_poll_records"
+      - "maxPollRecords"
+      - "consumer.maxPollRecords"
+    maxPollIntervalMs:
+      - "max_poll_interval_ms"
+      - "maxPollIntervalMs"
+      - "consumer.maxPollIntervalMs"
+    autoCommitIntervalMs:
+      - "autoCommitIntervalMs"
+      - "auto_commit_interval_ms"
+      - "consumer.autoCommitIntervalMs"

@@ -1,0 +1,13 @@
+# templates/parser-configmap.yaml
+{{- with .Values.parserConfig }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-access-parser-rules
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "kafka-access-monitor-operator.labels" $ | nindent 4 }}
+data:
+  rules.yaml: |
+    {{- toYaml . | nindent 4 }}
+{{- end }}

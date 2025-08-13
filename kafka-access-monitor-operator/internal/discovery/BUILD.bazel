@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "authn_enricher.go",
+        "broker_log_finder.go",
+        "configmap_finder.go",
+        "diagnostics_finder.go",
+        "gcp_metrics_finder.go",
+        "kafka_parser.go",
+        "metrics_finder.go",
+        "pod_finder.go",
+        "secret_finder.go",
+        "slack_reporter.go",
+    ],
+    importpath = "github.com/masmovil/mm-monorepo/pkg/runtime/operators/kafka-access-monitor-operator/internal/discovery",
+    visibility = ["//pkg/runtime/operators/kafka-access-monitor-operator:__subpackages__"],
+    deps = [
+        "//pkg/runtime/operators/kafka-access-monitor-operator/api/v1alpha1:go_default_library",
+        "//vendor/cloud.google.com/go/logging/logadmin:go_default_library",
+        "//vendor/cloud.google.com/go/monitoring/apiv3/v2:go_default_library",
+        "//vendor/github.com/go-logr/logr:go_default_library",
+        "//vendor/google.golang.org/api/iterator:go_default_library",
+        "//vendor/google.golang.org/genproto/googleapis/monitoring/v3:go_default_library",
+        "//vendor/gopkg.in/yaml.v2:go_default_library",
+        "//vendor/k8s.io/api/core/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/fields:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/client:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/log:go_default_library",
+    ],
+)

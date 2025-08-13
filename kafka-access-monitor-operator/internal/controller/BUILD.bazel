@@ -1,0 +1,52 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["kafkaaccessquery_controller.go"],
+    importpath = "github.com/masmovil/mm-monorepo/pkg/runtime/operators/kafka-access-monitor-operator/internal/controller",
+    visibility = ["//pkg/runtime/operators/kafka-access-monitor-operator:__subpackages__"],
+    deps = [
+        "//pkg/runtime/operators/kafka-access-monitor-operator/api/v1alpha1:go_default_library",
+        "//pkg/runtime/operators/kafka-access-monitor-operator/internal/ai:go_default_library",
+        "//pkg/runtime/operators/kafka-access-monitor-operator/internal/discovery:go_default_library",
+        "//vendor/github.com/go-logr/logr:go_default_library",
+        "//vendor/k8s.io/api/core/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/labels:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes:go_default_library",
+        "//vendor/k8s.io/client-go/util/retry:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/client:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/log:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "kafkaaccessquery_controller_test.go",
+        "suite_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//pkg/runtime/operators/kafka-access-monitor-operator/api/v1alpha1:go_default_library",
+        "//pkg/runtime/operators/kafka-access-monitor-operator/internal/discovery:go_default_library",
+        "//vendor/github.com/onsi/ginkgo/v2:go_default_library",
+        "//vendor/github.com/onsi/gomega:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//vendor/k8s.io/apimachinery/pkg/types:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes/fake:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes/scheme:go_default_library",
+        "//vendor/k8s.io/client-go/rest:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/client:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/envtest:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/log:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/log/zap:go_default_library",
+        "//vendor/sigs.k8s.io/controller-runtime/pkg/reconcile:go_default_library",
+    ],
+)

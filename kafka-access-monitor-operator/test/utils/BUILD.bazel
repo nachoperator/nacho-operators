@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["utils.go"],
+    importpath = "github.com/masmovil/mm-monorepo/pkg/runtime/operators/kafka-access-monitor-operator/test/utils",
+    visibility = ["//visibility:public"],
+    deps = ["//vendor/github.com/onsi/ginkgo/v2:go_default_library"],
+)

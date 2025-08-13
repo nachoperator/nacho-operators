@@ -1,0 +1,64 @@
+{{- if .Values.cr.enabled }}
+apiVersion: accessmonitor.masorange.com/v1alpha1
+kind: KafkaAccessQuery
+metadata:
+  name: {{ .Values.cr.name | default (printf "%s-default-query" .Release.Name) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "kafka-access-monitor-operator.name" . }}
+    helm.sh/chart: {{ include "kafka-access-monitor-operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  {{- if and .Values.ai (hasKey .Values.ai "analysisEnabled") }}
+  aiAnalysisEnabled: {{ .Values.ai.analysisEnabled }}
+  {{- else }}
+  aiAnalysisEnabled: true
+  {{- end }}
+  {{- with .Values.cr.inspectionScope }}
+  {{- if .namespaceSelector }}
+  namespaceSelector: {{- toYaml .namespaceSelector | nindent 4 }}
+  {{- else }}
+  namespaceSelector: {}  
+  {{- end }}
+  {{- if .podSelector }}
+  podSelector: {{- toYaml .podSelector | nindent 4 }}
+  {{- else }}
+  podSelector: {} 
+  {{- end }}
+  {{- end }} 
+  # --- Criterios de Detección de Endpoints de Kafka ---
+  {{- with .Values.cr.detectionCriteria }}
+  {{- if .environmentVariableNames }}
+  environmentVariableNames:
+    {{- toYaml .environmentVariableNames | nindent 4 }}
+  {{- end }}
+
+  {{- if .configMapKeys }}
+  configMapKeys:
+    {{- toYaml .configMapKeys | nindent 4 }}
+  {{- end }}
+
+  {{- if .kafkaBrokerPattern }}
+  kafkaBrokerPattern: {{ .kafkaBrokerPattern | quote }}
+  {{- end }}
+  {{- end }} # fin de with .Values.cr.detectionCriteria
+
+  # --- Controller configuration ---
+  {{- with .Values.cr.controllerConfig }}
+  {{- if .requeueInterval }}
+  requeueInterval: {{ .requeueInterval | quote }}
+  {{- else }}
+  requeueInterval: "1h" # Valor por defecto si no se especifica
+  {{- end }}
+  {{- end }} # fin de with .Values.cr.controllerConfig
+
+  errorLogScanInterval: {{ .Values.errorLogScanInterval | default "10m" | quote }}
+
+  {{- with .Values.cr.notifications }}
+  {{- if .slack.enabled }}
+  # notificationEndpoint: {{ .slack.notificationEndpoint | quote }}
+  {{- end }}
+  {{- end }} 
+
+{{- end }} # end if .Values.cr.enabled

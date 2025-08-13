@@ -1,0 +1,9 @@
+apiVersion: accessmonitor.masorange.com/v1alpha1
+kind: KafkaAccessQuery
+metadata:
+  labels:
+    app.kubernetes.io/name: kafka-access-monitor-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: kafkaaccessquery-sample
+spec:
+  # TODO(user): Add fields here

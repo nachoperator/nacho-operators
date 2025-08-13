@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- accessmonitor_v1alpha1_kafkaaccessquery.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
