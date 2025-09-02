@@ -7,7 +7,7 @@ metadata:
 rules:
 # Permissions for the custom resource CertificateMonitor
 - apiGroups:
-  - certmonitor.masorange.com # The API group of our CRD
+  - certmonitor.nachoperator.io # The API group of our CRD
   resources:
   - certificatemonitors        # The plural resource name
   verbs:
@@ -17,7 +17,7 @@ rules:
 # ---
 # Permissions to update the /status subresource of CertificateMonitor
 - apiGroups:
-  - certmonitor.masorange.com # The API group of our CRD
+  - certmonitor.nachoperator.io # The API group of our CRD
   resources:
   - certificatemonitors/status # Specifically target the /status subresource
   verbs:

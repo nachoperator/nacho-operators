@@ -11,16 +11,16 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	certmonitorv1alpha1 "github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/api/v1alpha1"
+	certmonitorv1alpha1 "github.com/nachoperator/nacho-operators/cert-monitor-operator/api/v1alpha1"
 )
 
 // SMTP server configuration (ensure these are correctly set or loaded from config/env)
 var (
-	smtpHost     = "smtp.example.com" // TODO:  
-	smtpPort     = "587"              // TODO:    
-	smtpUsername = "alert@example.com" // TODO:    
-	smtpPassword = "your-smtp-password" // TODO:    
-	fromEmail    = "alert@example.com" // TODO:    
+	smtpHost     = "smtp.example.com"   // TODO:
+	smtpPort     = "587"                // TODO:
+	smtpUsername = "alert@example.com"  // TODO:
+	smtpPassword = "your-smtp-password" // TODO:
+	fromEmail    = "alert@example.com"  // TODO:
 )
 
 // --- Opsgenie Constants ---
@@ -34,11 +34,10 @@ type OpsgenieAlertPayload struct {
 	Message     string            `json:"message"`
 	Alias       string            `json:"alias,omitempty"`
 	Description string            `json:"description,omitempty"`
-	Priority    string            `json:"priority,omitempty"` 
+	Priority    string            `json:"priority,omitempty"`
 	Tags        []string          `json:"tags,omitempty"`
 	Details     map[string]string `json:"details,omitempty"`
 }
-
 
 // SendAggregatedWebhookNotification sends a single webhook notification with an aggregated message.
 func SendAggregatedWebhookNotification(log logr.Logger, endpoint string, aggregatedMessage string) error {
@@ -83,9 +82,8 @@ func SendAggregatedWebhookNotification(log logr.Logger, endpoint string, aggrega
 		return nil
 	} else {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		errMsg := fmt.Sprintf("webhook request failed with status: %s, body: %s", resp.Status, string(bodyBytes))
-		log.Error(fmt.Errorf(errMsg), "Aggregated webhook notification failed")
-		return fmt.Errorf(errMsg)
+		log.Error(fmt.Errorf("webhook request failed with status: %s, body: %s", resp.Status, string(bodyBytes)), "Aggregated webhook notification failed")
+		return fmt.Errorf("webhook request failed with status: %s, body: %s", resp.Status, string(bodyBytes))
 	}
 }
 
@@ -165,15 +163,15 @@ func SendOpsgenieAlert(
 
 	// Constructing details for Opsgenie payload
 	opsgenieDetails := map[string]string{
-		"customResourceNamespace": crNamespace,
-		"customResourceName":      crName,
+		"customResourceNamespace":   crNamespace,
+		"customResourceName":        crName,
 		"expiringCertificatesCount": fmt.Sprintf("%d", len(certs)),
 	}
 
 	payload := OpsgenieAlertPayload{
-		Message:     message,      
-		Alias:       alias,        
-		Description: description,  
+		Message:     message,
+		Alias:       alias,
+		Description: description,
 		Priority:    priority,
 		Tags:        []string{"kubernetes", "certificate-monitor", "operator", crNamespace, crName},
 		Details:     opsgenieDetails,
@@ -196,7 +194,7 @@ func SendOpsgenieAlert(
 
 	log.Info("Sending Opsgenie alert", "alias", alias, "priority", priority, "message", message)
 
-	client := &http.Client{Timeout: 15 * time.Second}  
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error(err, "Failed to send Opsgenie alert request")
@@ -209,9 +207,15 @@ func SendOpsgenieAlert(
 		if readErr != nil {
 			log.Error(readErr, "Failed to read Opsgenie error response body")
 		}
-		errMsg := fmt.Sprintf("Opsgenie API request failed with status code %d. Response: %s", resp.StatusCode, string(bodyBytes))
-		log.Error(fmt.Errorf(errMsg), "Opsgenie API error")
-		return fmt.Errorf(errMsg)
+
+		log.Error(fmt.Errorf(
+			"Opsgenie API request failed with status code %d. Response: %s",
+			resp.StatusCode, string(bodyBytes),
+		), "Opsgenie API error")
+
+		return fmt.Errorf(
+			"Opsgenie API request failed with status code %d. Response: %s",
+			resp.StatusCode, string(bodyBytes))
 	}
 
 	log.Info("Successfully sent alert to Opsgenie", "alias", alias, "statusCode", resp.StatusCode)

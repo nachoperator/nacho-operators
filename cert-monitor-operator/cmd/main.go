@@ -33,8 +33,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	certmonitorv1alpha1 "github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/api/v1alpha1"
-	"github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/internal/controller"
+	certmonitorv1alpha1 "github.com/nachoperator/nacho-operators/cert-monitor-operator/api/v1alpha1"
+	"github.com/nachoperator/nacho-operators/cert-monitor-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -124,7 +124,7 @@ func main() {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "a7faf73f.masorange.com",
+		LeaderElectionID:       "a7faf73f.nachoperator.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly

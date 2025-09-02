@@ -55,4 +55,4 @@ cr:
     scopedNamespaceSelector:
       enabled: true  
       matchLabels:
-        certmonitor.masorange.com/notify: "true" 
+        certmonitor.nachoperator.io/notify: "true" 

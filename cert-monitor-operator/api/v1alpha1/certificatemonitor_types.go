@@ -53,10 +53,10 @@ type CertificateMonitorSpec struct {
 	// If empty or invalid, a default value (12h) will be used by the controller.
 	// +optional
 	RequeueInterval string `json:"requeueInterval,omitempty"`
-	
-    // Opsgenie contains Opsgenie notification configuration.
-    // +kubebuilder:validation:Optional
-    Opsgenie *OpsgenieConfig `json:"opsgenie,omitempty"`
+
+	// Opsgenie contains Opsgenie notification configuration.
+	// +kubebuilder:validation:Optional
+	Opsgenie *OpsgenieConfig `json:"opsgenie,omitempty"`
 
 	// NotificationNamespaceSelector specifies a label selector for namespaces.
 	// Notifications for Webhook (Slack) and Opsgenie will be restricted to
@@ -127,7 +127,7 @@ type CertificateMonitorStatus struct {
 	// LastNotificationTime records when the last aggregated notification was sent.
 	// Used for cooldown logic.
 	// +optional
-	LastNotificationTime *metav1.Time `json:"lastNotificationTime,omitempty"` 
+	LastNotificationTime *metav1.Time `json:"lastNotificationTime,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -156,41 +156,41 @@ type CertificateMonitorList struct {
 // OpsgenieAPIKeySecretRef defines a reference to a Kubernetes Secret
 // containing the Opsgenie API key.
 type OpsgenieAPIKeySecretRef struct {
-    // Name is the name of the Kubernetes Secret.
-    // +kubebuilder:validation:Required
-    Name string `json:"name"`
+	// Name is the name of the Kubernetes Secret.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
 
-    // Namespace is the namespace of the Kubernetes Secret.
-    // Defaults to the CertificateMonitor's namespace if not specified.
-    // +kubebuilder:validation:Optional
-    Namespace string `json:"namespace,omitempty"`
+	// Namespace is the namespace of the Kubernetes Secret.
+	// Defaults to the CertificateMonitor's namespace if not specified.
+	// +kubebuilder:validation:Optional
+	Namespace string `json:"namespace,omitempty"`
 
-    // Key is the key within the Secret's Data map that contains the API key.
-    // +kubebuilder:validation:Required
-    Key string `json:"key"`
+	// Key is the key within the Secret's Data map that contains the API key.
+	// +kubebuilder:validation:Required
+	Key string `json:"key"`
 }
 
 // OpsgenieConfig defines the configuration for Opsgenie notifications.
 type OpsgenieConfig struct {
-    // Enabled specifies whether Opsgenie notifications are enabled.
-    // +kubebuilder:validation:Optional
-    Enabled bool `json:"enabled,omitempty"`
+	// Enabled specifies whether Opsgenie notifications are enabled.
+	// +kubebuilder:validation:Optional
+	Enabled bool `json:"enabled,omitempty"`
 
-    // APIKeySecretRef is a reference to the Kubernetes Secret
-    // containing the Opsgenie API key.
-    // Required if Opsgenie is enabled.
-    // +kubebuilder:validation:Optional
-    APIKeySecretRef *OpsgenieAPIKeySecretRef `json:"apiKeySecretRef,omitempty"`
+	// APIKeySecretRef is a reference to the Kubernetes Secret
+	// containing the Opsgenie API key.
+	// Required if Opsgenie is enabled.
+	// +kubebuilder:validation:Optional
+	APIKeySecretRef *OpsgenieAPIKeySecretRef `json:"apiKeySecretRef,omitempty"`
 
-    // Region specifies the Opsgenie API region (e.g., "EU", "US").
-    // If empty, defaults to the US region API endpoint.
-    // +kubebuilder:validation:Optional
-    Region string `json:"region,omitempty"`
+	// Region specifies the Opsgenie API region (e.g., "EU", "US").
+	// If empty, defaults to the US region API endpoint.
+	// +kubebuilder:validation:Optional
+	Region string `json:"region,omitempty"`
 
-    // Priority for the Opsgenie alert (e.g., P1, P2, P3, P4, P5). Defaults to P3.
-    // +kubebuilder:validation:Optional
-    // +kubebuilder:default:="P3"
-    Priority string `json:"priority,omitempty"`
+	// Priority for the Opsgenie alert (e.g., P1, P2, P3, P4, P5). Defaults to P3.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:="P3"
+	Priority string `json:"priority,omitempty"`
 }
 
 func init() {

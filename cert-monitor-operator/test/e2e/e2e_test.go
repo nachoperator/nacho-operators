@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/test/utils"
+	"github.com/nachoperator/nacho-operators/cert-monitor-operator/test/utils"
 )
 
 const namespace = "cert-monitor-operator-system"

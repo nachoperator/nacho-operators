@@ -8,7 +8,7 @@ metadata:
   name: certificatemonitor-viewer-role
 rules:
 - apiGroups:
-  - certmonitor.masorange.com
+  - certmonitor.nachoperator.io
   resources:
   - certificatemonitors
   verbs:
@@ -16,7 +16,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - certmonitor.masorange.com
+  - certmonitor.nachoperator.io
   resources:
   - certificatemonitors/status
   verbs:

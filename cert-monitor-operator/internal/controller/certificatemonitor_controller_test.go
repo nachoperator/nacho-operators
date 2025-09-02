@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	certmonitorv1alpha1 "github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/api/v1alpha1"
+	certmonitorv1alpha1 "github.com/nachoperator/nacho-operators/cert-monitor-operator/api/v1alpha1"
 )
 
 var _ = Describe("CertificateMonitor Controller", func() {

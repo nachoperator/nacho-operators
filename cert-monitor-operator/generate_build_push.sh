@@ -22,7 +22,7 @@ MAIN_PACKAGE_PATH="cmd/main.go"
 
 # --- CRD and Chart Paths ---
 CRD_SOURCE_DIR="config/crd/bases"
-CRD_FILENAME="certmonitor.masorange.com_certificatemonitors.yaml" 
+CRD_FILENAME="certmonitor.nachoperator.io_certificatemonitors.yaml" 
 HELM_CHART_CRDS_DIR="charts/cert-monitor-operator/crds" 
 
 # --- Steps ---

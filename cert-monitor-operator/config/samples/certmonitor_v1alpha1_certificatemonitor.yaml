@@ -1,4 +1,4 @@
-apiVersion: certmonitor.masorange.com/v1alpha1
+apiVersion: certmonitor.nachoperator.io/v1alpha1
 kind: CertificateMonitor
 metadata:
   labels:

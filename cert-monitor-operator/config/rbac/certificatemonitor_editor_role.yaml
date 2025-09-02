@@ -8,7 +8,7 @@ metadata:
   name: certificatemonitor-editor-role
 rules:
 - apiGroups:
-  - certmonitor.masorange.com
+  - certmonitor.nachoperator.io
   resources:
   - certificatemonitors
   verbs:
@@ -20,7 +20,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - certmonitor.masorange.com
+  - certmonitor.nachoperator.io
   resources:
   - certificatemonitors/status
   verbs:

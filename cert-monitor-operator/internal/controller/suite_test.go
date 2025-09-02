@@ -33,7 +33,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	certmonitorv1alpha1 "github.com/masmovil/mm-monorepo/pkg/runtime/operators/cert-monitor-operator/api/v1alpha1"
+	certmonitorv1alpha1 "github.com/nachoperator/nacho-operators/cert-monitor-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
