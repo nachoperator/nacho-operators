@@ -98,12 +98,11 @@ type MonitoredCertificateInfo struct {
 
 	// Indicates if the certificate is already expired.
 	// +optional
-	IsExpired bool `json:"isExpired,omitempty"` // NUEVO CAMPO
+	IsExpired bool `json:"isExpired,omitempty"`
 
 	// Indicates if the certificate is within the renewal threshold (and not already expired).
 	// +optional
-	IsNearExpiration bool `json:"isNearExpiration,omitempty"` // Propósito ajustado
-
+	IsNearExpiration bool `json:"isNearExpiration,omitempty"`
 }
 
 // CertificateMonitorStatus defines the observed state of CertificateMonitor
@@ -117,7 +116,6 @@ type CertificateMonitorStatus struct {
 
 	// MonitoredCertificates contains the list of certificates found and their status.
 	// +optional
-	// AÑADIDO: El campo que faltaba para la lista de certificados
 	MonitoredCertificates []MonitoredCertificateInfo `json:"monitoredCertificates,omitempty"`
 
 	// LastChecked marks the last time the reconciler ran its check.

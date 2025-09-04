@@ -12,8 +12,6 @@ spec:
     listKind: CertificateMonitorList
     plural: certificatemonitors
     singular: certificatemonitor
-    shortNames:
-      - cmon
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -338,8 +336,7 @@ spec:
               monitoredCertificates:
                 description: |-
                   MonitoredCertificates contains the list of certificates found and their status.
-                  AÑADIDO: El campo que faltaba para la lista de certificados
-                items:
+∫                items:
                   description: MonitoredCertificateInfo contains details about a specific
                     monitored certificate.
                   properties:

@@ -23,15 +23,15 @@ spec:
     apiKeySecretRef:
       name: "opsgenie-cert-monitor-apikey"
       namespace: {{ .Release.Namespace }}
-      key: "apiKey"
-      {{- if .Values.cr.notifications.opsgenie.region }}
-      region: {{ .Values.cr.notifications.opsgenie.region | quote }}
-      {{- end }}
-      {{- if .Values.cr.notifications.opsgenie.priority }}
-      priority: {{ .Values.cr.notifications.opsgenie.priority | quote }}
-      {{- else }}
-      priority: "P3"
-      {{- end }}
+    key: "apiKey"
+    {{- if .Values.cr.notifications.opsgenie.region }}
+    region: {{ .Values.cr.notifications.opsgenie.region | quote }}
+    {{- end }}
+    {{- if .Values.cr.notifications.opsgenie.priority }}
+    priority: {{ .Values.cr.notifications.opsgenie.priority | quote }}
+    {{- else }}
+    priority: "P3"
+    {{- end }}
 
   # # (Optional) Email list to send notifications
   # emailRecipients:
