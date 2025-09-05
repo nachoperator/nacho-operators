@@ -1,58 +1,202 @@
+# =============================================================================
+# Certificate Monitor Operator - Helm Chart Values
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Deployment Configuration
+# -----------------------------------------------------------------------------
+
+# Number of operator replicas
 replicaCount: 1
 
+# Container image configuration
 image:
+  # Container registry and image name
   repository: eu.gcr.io/mm-k8s-dev-01/operator/cert-monitor-operator
+  # Image pull policy (Always, IfNotPresent, Never)
   pullPolicy: IfNotPresent
+  # Image tag (use specific versions in production)
   tag: "latest"
 
+# Secrets for pulling images from private registries
 imagePullSecrets: []
+
+# Override default naming
 nameOverride: ""
 fullnameOverride: ""
 
+# -----------------------------------------------------------------------------
+# Service Account Configuration
+# -----------------------------------------------------------------------------
+
 serviceAccount:
+  # Create a service account for the operator
   create: true
+  # Additional annotations for the service account
   annotations: {}
+  # Service account name (auto-generated if empty)
   name: ""
 
+# -----------------------------------------------------------------------------
+# Pod Configuration
+# -----------------------------------------------------------------------------
+
+# Additional annotations for operator pods
 podAnnotations: {}
 
+# Additional labels for operator pods
 podLabels: {}
 
+# Security context for the entire pod
 podSecurityContext: {}
+
+# Security context for the operator container
 securityContext: {}
 
-service:
-  port: 9443
-
-resources: {}
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-
+# Node selection constraints
 nodeSelector: {}
+
+# Tolerations for pod assignment
 tolerations: []
+
+# Affinity rules for pod assignment
 affinity: {}
 
-livenessProbe: {}
-readinessProbe: {}
+# -----------------------------------------------------------------------------
+# Resource Management
+# -----------------------------------------------------------------------------
 
+# CPU and memory resources for the operator
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# Horizontal Pod Autoscaler configuration
+autoscaling:
+  # Enable horizontal pod autoscaling
+  enabled: false
+  # Minimum number of replicas
+  minReplicas: 1
+  # Maximum number of replicas
+  maxReplicas: 100
+  # Target CPU utilization percentage
+  targetCPUUtilizationPercentage: 80
+
+# -----------------------------------------------------------------------------
+# Health Checks
+# -----------------------------------------------------------------------------
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 15
+  periodSeconds: 20
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 8081
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# -----------------------------------------------------------------------------
+# Network Configuration
+# -----------------------------------------------------------------------------
+
+# Service configuration for webhooks
+service:
+  # Port for webhook service
+  port: 9443
+
+# -----------------------------------------------------------------------------
+# Storage Configuration
+# -----------------------------------------------------------------------------
+
+# Additional volumes to mount
 volumes: []
+
+# Additional volume mounts for the operator container
 volumeMounts: []
 
+# -----------------------------------------------------------------------------
+# Monitoring & Observability
+# -----------------------------------------------------------------------------
+
+# Prometheus metrics configuration
+metrics:
+  # Enable metrics endpoint
+  enabled: true
+  service:
+    # Port for metrics service
+    port: 8443
+  serviceMonitor:
+    # Create ServiceMonitor for Prometheus Operator (requires Prometheus Operator)
+    enabled: true
+
+# -----------------------------------------------------------------------------
+# Certificate Monitor Configuration
+# -----------------------------------------------------------------------------
+
+# Custom Resource default configuration
 cr:
+  # Days before expiration to trigger renewal notifications
   renewalThresholdDays: 30
+  
+  # Notification channels configuration
   notifications:
+    # Slack notifications
     slack:
+      # Enable Slack notifications
       enabled: true
+      # Slack webhook endpoint (configure per environment)
       notificationEndpoint: # configured in every env
+    
+    # OpsGenie notifications
     opsgenie:
+      # Enable OpsGenie notifications
       enabled: false
+      # OpsGenie region (US, EU)
       region: "EU"
-      priority: "P2"                  
-    scopedNamespaceSelector:
-      enabled: true  
-      matchLabels:
-        certmonitor.nachoperator.io/notify: "true" 
+      # Alert priority (P1-P5)
+      priority: "P2"
+  
+  # Namespace selector for monitoring scope
+  scopedNamespaceSelector:
+    # Enable namespace-scoped monitoring
+    enabled: true
+    # Label selector for namespaces to monitor
+    matchLabels:
+      certmonitor.nachoperator.io/notify: "true"
+
+# -----------------------------------------------------------------------------
+# External Integrations
+# -----------------------------------------------------------------------------
+
+# OpsGenie integration credentials
+opsgenie:
+  # OpsGenie API key (set via --set-string or external secret)
+  apikey: ""
+  # OpsGenie team name
+  team: ""
+
+# =============================================================================
+# Configuration Examples:
+# 
+# Production deployment:
+#   helm upgrade cert-monitor-operator . \
+#     --set image.tag=v1.0.0 \
+#     --set metrics.serviceMonitor.enabled=true \
+#     --set-string opsgenie.apikey=your-api-key
+#
+# Development deployment:
+#   helm upgrade cert-monitor-operator . \
+#     --set image.tag=latest \
+#     --set cr.renewalThresholdDays=7
+# =============================================================================

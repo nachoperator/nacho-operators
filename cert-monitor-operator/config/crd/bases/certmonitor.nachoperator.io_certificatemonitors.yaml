@@ -334,9 +334,9 @@ spec:
                 format: date-time
                 type: string
               monitoredCertificates:
-                description: |-
-                  MonitoredCertificates contains the list of certificates found and their status.
-∫                items:
+                description: MonitoredCertificates contains the list of certificates
+                  found and their status.
+                items:
                   description: MonitoredCertificateInfo contains details about a specific
                     monitored certificate.
                   properties:
